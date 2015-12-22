@@ -34,8 +34,8 @@ class Test extends FlatSpec with Matchers {
   }
 
   "Russian Translation" should "download translation and parse" in {
-    val page: Future[String] =  LingvoSite.getPage("test")
-    val pageResult: String= Await.result(page,60 seconds)
+    val pageTry: Try[String] =  LingvoSite.getPage("test")
+    val pageResult: String= pageTry.get
     pageResult.contains("тест") should be(true)
     LingvoSite.parseTranslation(pageResult).get should be("тест")
   }
@@ -43,8 +43,8 @@ class Test extends FlatSpec with Matchers {
 
 
   "English Translation" should "download translation and parse" in {
-    val page: Future[String] =  OxfordSite.getPage("test")
-    val pageResult: String = Await.result(page,60 seconds)
+    val pageTry: Try[String] =  OxfordSite.getPage("test")
+    val pageResult: String = pageTry.get
     pageResult.contains("examination") should be(true)
     OxfordSite.parseTranslation(pageResult).get should be(("test", "an examination of somebody’s knowledge or ability, consisting of questions for them to answer or activities for them to perform"))
 

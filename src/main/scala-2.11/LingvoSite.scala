@@ -19,7 +19,6 @@ object LingvoSite {
 
   def parseTranslation(content: String): Try[String] = {
     Try {
-
       val browser = new Browser
       val doc = browser.parseString(content)
       val spanElement: Element = doc >> element(".r_rs")
@@ -27,10 +26,12 @@ object LingvoSite {
     }
   }
 
-  def getPage(word: String)(implicit executor: ExecutionContext): Future[String] = {
-    Future {
-        val html = Source.fromURL("http://www.translate.ru/dictionary/en-ru/" + java.net.URLEncoder.encode(word,"UTF-8"))
-        html.mkString
+  def getPage(word: String): Try[String] = {
+    Try {
+      val html = Source.fromURL("http://www.translate.ru/dictionary/en-ru/" + java.net.URLEncoder.encode(word, "UTF-8"))
+      val ret = html.mkString
+      html.close()
+      ret
     }
   }
 
