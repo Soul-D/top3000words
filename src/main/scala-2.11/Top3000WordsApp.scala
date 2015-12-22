@@ -15,61 +15,35 @@ object Top3000WordsApp extends App {
   val dictionatyActor = system.actorOf(Props[DictionaryActor], "dictionatyActor")
   val englishTranslationActor = system.actorOf(Props(classOf[EnglishTranslationActor], dictionatyActor), "englishTranslationActor")
   val russianTranslationActor = system.actorOf(Props(classOf[RussianTranslationActor], dictionatyActor), "russianTranslationActor")
-  val mapGetPageThreadExecutionContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(16))
-  val mapGetWordsThreadExecutionContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(16))
+  val englishDownloadActor = system.actorOf(Props(classOf[EnglishDownloadActor], englishTranslationActor), "englishDownloadActor")
+  val russianDownloadActor = system.actorOf(Props(classOf[RussianDownloadActor], russianTranslationActor), "russianDownloadActor")
 
 
-  start()
+  val wordsCnt = OxfordSite.getTableOfContent.flatMap(letterGroup => {
+    getWords(letterGroup, 1)
+  }).size
 
-  scala.io.StdIn.readLine()
-  system.terminate()
-  def start() = {
+  dictionatyActor ! Save(wordsCnt)
 
-    import concurrent.ExecutionContext.Implicits.global
+  def getWords(letterGroup: String, pageNum: Int): List[String] = {
 
-    Future {
-      OxfordSite.getTableOfContent.par.foreach(letterGroup => {
-        getWords(letterGroup, 1)
-      })
-
+    OxfordSite.getWordsFromPage(letterGroup, pageNum) match {
+      case Success(Some(words)) => {
+        words.foreach((word: String) => {
+          println("englishDownloadActor ! " + word)
+          englishDownloadActor ! word
+          println("russianDownloadActor ! " + word)
+          russianDownloadActor ! word
+        })
+        words ++ getWords(letterGroup, pageNum+1)
+      }
+      case Success(None) => List.empty
+      case Failure(ex) => {
+        println(ex.getMessage)
+        List.empty
+      }
     }
   }
 
-
-  def getWords(letterGroup: String, pageNum: Int): Unit = {
-    implicit val executor = mapGetWordsThreadExecutionContext
-
-    OxfordSite.getWordsFromPage(letterGroup, pageNum).map(tryWords => {
-      tryWords match {
-        case Success(Some(words)) => words.par.foreach(word => {
-            parse(word,letterGroup,pageNum)
-        })
-        case Success(None) => Unit
-        case Failure(ex) => println(ex.getMessage)
-      }
-    })
-
-  }
-
-
-  def parse(word: String, letterGroup: String, pageNum: Int)= {
-
-    implicit val executor = mapGetPageThreadExecutionContext
-    OxfordSite.getPage(word).map(tryEnglishPage => {
-      tryEnglishPage match {
-        case Success(englishPage) => {
-          englishTranslationActor ! (word, englishPage)
-          getWords(letterGroup, pageNum + 1)
-        }
-        case Failure(ex) => println(ex.getMessage)
-      }
-    })
-    LingvoSite.getPage(word).map(_ match {
-      case Success(russianPage) => {
-        russianTranslationActor !(word, russianPage)
-      }
-      case Failure(ex) => println(ex.getMessage)
-    })
-  }
 
 }
