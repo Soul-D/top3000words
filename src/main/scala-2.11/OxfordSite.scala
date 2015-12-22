@@ -16,7 +16,6 @@ import scala.util.Try
 
 object OxfordSite {
 
-  val getPageThreadExecutionContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(16))
 
   def parseTranslation(content: String): Try[(String, String)] = {
     Try {
@@ -26,35 +25,31 @@ object OxfordSite {
       val str = Jsoup.parse(spanElement.toString).text()
       val transcription = str.stripPrefix("BrE//").stripSuffix("//").trim
       val translation = doc >> text(".def")
-      (transcription,translation)
+      (transcription, translation)
     }
   }
 
-  def getPage(word: String): Future[Try[String]] = {
-    implicit val executor = getPageThreadExecutionContext
-    Future {
-      Try {
-        val html = Source.fromURL("http://www.oxfordlearnersdictionaries.com/definition/english/" + (word.replace(' ','-')) + "_1")
-        html.mkString
-      }
+  def getPage(word: String): Try[String] = {
+    Try {
+      val html = Source.fromURL("http://www.oxfordlearnersdictionaries.com/definition/english/" + (word.replace(' ', '-')) + "_1")
+      val ret = html.mkString
+      html.close()
+      ret
     }
   }
 
-  def getWordsFromPage(letterGroup: String, pageNum: Int): Future[Try[Option[List[String]]]] = {
-    import ExecutionContext.Implicits.global
-
-    Future {
-      Try {
-        val html = Source.fromURL("http://www.oxfordlearnersdictionaries.com" +
-          "/wordlist/english/oxford3000/Oxford3000_" + letterGroup + "/?page=" + pageNum)
-        val page = html.mkString
-        val browser = new Browser
-        val doc = browser.parseString(page)
-        val ulElement: Element = doc >> element(".wordlist-oxford3000")
-        val liElements: List[Element] = ulElement >> elementList("li")
-        if (liElements.size > 0) Some(liElements.map(_ >> text("a")))
-        else None
-      }
+  def getWordsFromPage(letterGroup: String, pageNum: Int): Try[Option[List[String]]] = {
+    Try {
+      val html = Source.fromURL("http://www.oxfordlearnersdictionaries.com" +
+        "/wordlist/english/oxford3000/Oxford3000_" + letterGroup + "/?page=" + pageNum)
+      val page = html.mkString
+      html.close()
+      val browser = new Browser
+      val doc = browser.parseString(page)
+      val ulElement: Element = doc >> element(".wordlist-oxford3000")
+      val liElements: List[Element] = ulElement >> elementList("li")
+      if (liElements.size > 0) Some(liElements.map(_ >> text("a")))
+      else None
     }
   }
 
@@ -62,6 +57,7 @@ object OxfordSite {
 
     val html = Source.fromURL("http://www.oxfordlearnersdictionaries.com/wordlist/english/oxford3000/Oxford3000_A-B/")
     val page = html.mkString
+    html.close()
     val browser = new Browser
     val doc = browser.parseString(page)
     val ulElement: Element = doc >> element(".hide_phone")

@@ -6,6 +6,7 @@ import akka.testkit.TestActorRef
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.util.{Success,Failure ,Try}
+import scala.concurrent.ExecutionContext.Implicits.global
 
 
 class Test extends FlatSpec with Matchers {
@@ -18,16 +19,14 @@ class Test extends FlatSpec with Matchers {
   }
 
   "Words list extractor" should "download words from page" in {
-    val future: Future[Try[Option[List[String]]]] = OxfordSite.getWordsFromPage("A-B", 1)
-    val wordsTry:Try[Option[List[String]]] = Await.result(future,60 seconds)
+    val wordsTry:Try[Option[List[String]]] = OxfordSite.getWordsFromPage("A-B", 1)
     wordsTry should be a 'success
     val words = wordsTry.get
     words.get.find(_ == "abandon") should be (Some("abandon"))
 
   }
   "Words list extractor" should "return None from empty page" in {
-    val future: Future[Try[Option[List[String]]]] = OxfordSite.getWordsFromPage("A-B", 999)
-    val wordsTry:Try[Option[List[String]]] = Await.result(future,60 seconds)
+    val wordsTry:Try[Option[List[String]]] = OxfordSite.getWordsFromPage("A-B", 999)
     wordsTry should be a 'success
     val words = wordsTry.get
     words should be(None)
@@ -35,10 +34,8 @@ class Test extends FlatSpec with Matchers {
   }
 
   "Russian Translation" should "download translation and parse" in {
-    val page: Future[Try[String]] =  LingvoSite.getPage("test")
-    val pageResultTry: Try[String]= Await.result(page,60 seconds)
-    pageResultTry should be a 'success
-    val pageResult = pageResultTry.get
+    val pageTry: Try[String] =  LingvoSite.getPage("test")
+    val pageResult: String= pageTry.get
     pageResult.contains("тест") should be(true)
     LingvoSite.parseTranslation(pageResult).get should be("тест")
   }
@@ -46,10 +43,8 @@ class Test extends FlatSpec with Matchers {
 
 
   "English Translation" should "download translation and parse" in {
-    val page: Future[Try[String]] =  OxfordSite.getPage("test")
-    val pageResultTry: Try[String] = Await.result(page,60 seconds)
-    pageResultTry should be a 'success
-    val pageResult = pageResultTry.get
+    val pageTry: Try[String] =  OxfordSite.getPage("test")
+    val pageResult: String = pageTry.get
     pageResult.contains("examination") should be(true)
     OxfordSite.parseTranslation(pageResult).get should be(("test", "an examination of somebody’s knowledge or ability, consisting of questions for them to answer or activities for them to perform"))
 
